@@ -1,8 +1,7 @@
 const { Pool } = require("pg");
 
 const pool = new Pool({
-  connectionString:
-    "postgresql://gabriel-ads:wDlRUsny5Lm0@ep-restless-cell-a51jkkuu.us-east-2.aws.neon.tech/task-manager-engine-db?sslmode=require",
+  connectionString: process.env.CONNECTION_STRING.toString(),
 });
 
 module.exports = {
