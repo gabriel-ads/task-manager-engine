@@ -48,7 +48,6 @@ class User {
         },
       });
       if (!user) {
-        console.log(user);
         callback({ wrongPassword: true });
         return;
       }

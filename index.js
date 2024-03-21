@@ -6,6 +6,8 @@ const User = require("./core/user.js");
 const Task = require("./core/task.js");
 const authenticate = require("./middleware/authenticate.js");
 const { PrismaClient } = require("@prisma/client");
+const jwt = require("jsonwebtoken");
+const { privateKey } = require("./globalVariables.js");
 
 const prisma = new PrismaClient();
 const user = new User();
@@ -29,12 +31,14 @@ async function main() {
   });
 
   app.post("/tasks/create", authenticate, async (req, res) => {
+    const { authorization: accessToken } = req.headers;
+    const decodedToken = jwt.verify(accessToken, privateKey);
     const taskInputs = {
       title: req.body.title,
       description: req.body.description,
     };
 
-    task.Create(taskInputs, ({ result, error }) => {
+    task.Create(taskInputs, decodedToken.user.id, ({ result, error }) => {
       if (error) res.status(500).send("Internal Server Error");
       res.status(201).json(result);
     });

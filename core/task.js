@@ -6,20 +6,27 @@ class Task {
   async Get(callback) {
     try {
       const result = await prisma.task.findMany();
-      callback({ result: result.rows });
+      callback({ result: result });
     } catch (err) {
       console.error(err);
       callback({ error: true });
     }
   }
 
-  async Create({ title, description }, callback) {
+  async Create({ title, description }, userId, callback) {
     try {
-      const result = await query(
-        "INSERT INTO tasks (title, description) VALUES ($1, $2) RETURNING *",
-        [title, description]
-      );
-      callback({ result: result.rows[0] });
+      const task = await prisma.task.create({
+        data: {
+          title,
+          description,
+          author: {
+            connect: {
+              id: userId,
+            },
+          },
+        },
+      });
+      callback({ result: task });
     } catch (err) {
       console.log(err);
       callback({ error: true });
@@ -28,12 +35,15 @@ class Task {
 
   async Update({ id, title, description }, callback) {
     try {
-      await query(
-        "UPDATE tasks SET title = $1, description = $2 WHERE id = $3",
-        [title, description, id]
-      );
+      const result = await prisma.task.update({
+        where: { id },
+        data: {
+          title,
+          description,
+        },
+      });
 
-      callback({ result: `Tarefa com ID ${id} foi modificada com sucesso!` });
+      callback({ result: result });
     } catch (err) {
       console.error(err);
       callback({ error: true });
@@ -42,7 +52,11 @@ class Task {
 
   async Delete(id, callback) {
     try {
-      await query("DELETE FROM tasks WHERE id = $1", [id]);
+      await prisma.task.delete({
+        where: {
+          id,
+        },
+      });
 
       callback({ result: `A Tarefa com o ID: ${id} foi DELETADA` });
     } catch (err) {
