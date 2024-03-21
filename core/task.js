@@ -1,11 +1,11 @@
-const pool = require("./pool.js");
+const { PrismaClient } = require("@prisma/client");
 
-const { query } = pool;
+const prisma = new PrismaClient();
 
 class Task {
   async Get(callback) {
     try {
-      const result = await query("SELECT * FROM tasks");
+      const result = await prisma.task.findMany();
       callback({ result: result.rows });
     } catch (err) {
       console.error(err);

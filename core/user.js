@@ -1,22 +1,23 @@
-const pool = require("./pool.js");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { privateKey } = require("../globalVariables.js");
+const { PrismaClient } = require("@prisma/client");
 
-const { query } = pool;
+const prisma = new PrismaClient();
 
 class User {
-  async Find(userId, callback) {
-    if (userId) {
-      const sql = `SELECT * FROM users WHERE user_id = $1`;
+  async Find(id, callback) {
+    try {
+      const user = await prisma.user.findUnique({
+        where: {
+          id,
+        },
+      });
 
-      try {
-        const result = await query(sql, [userId]);
-        callback({ result: result.rows[0] });
-      } catch (err) {
-        console.error(err);
-        callback({ error: true });
-      }
+      callback({ result: user });
+    } catch (err) {
+      console.error(err);
+      callback({ error: true });
     }
   }
 
@@ -24,11 +25,15 @@ class User {
     body.password = bcrypt.hashSync(body.password, 10);
     const { username, email, password } = body;
 
-    let sql = `INSERT INTO users(username, email, password_hash) VALUES ($1, $2, $3) RETURNING user_id`;
-
     try {
-      const result = await query(sql, [username, email, password]);
-      callback(result.rows[0]);
+      const user = await prisma.user.create({
+        data: {
+          username: username,
+          email: email,
+          password: password,
+        },
+      });
+      callback({ result: user });
     } catch (err) {
       console.log(err);
       callback({ error: true });
@@ -36,22 +41,19 @@ class User {
   }
 
   async Login({ username, password }, callback) {
-    let sql = "SELECT * FROM users WHERE username = $1";
-
     try {
-      const findUserByUsername = await query(sql, [username]);
-
-      if (!findUserByUsername.rows.length) {
+      const user = await prisma.user.findUnique({
+        where: {
+          username,
+        },
+      });
+      if (!user) {
+        console.log(user);
         callback({ wrongPassword: true });
         return;
       }
 
-      const user = findUserByUsername.rows[0];
-
-      const isCorrectPassword = bcrypt.compareSync(
-        password,
-        user.password_hash
-      );
+      const isCorrectPassword = bcrypt.compareSync(password, user.password);
 
       if (isCorrectPassword) {
         const accessToken = jwt.sign({ user }, privateKey, {

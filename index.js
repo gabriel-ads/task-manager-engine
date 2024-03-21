@@ -5,7 +5,9 @@ const cookieParser = require("cookie-parser");
 const User = require("./core/user.js");
 const Task = require("./core/task.js");
 const authenticate = require("./middleware/authenticate.js");
+const { PrismaClient } = require("@prisma/client");
 
+const prisma = new PrismaClient();
 const user = new User();
 const task = new Task();
 const app = express();
@@ -18,90 +20,96 @@ app.use(
 );
 app.use(cookieParser());
 
-app.get("/tasks", authenticate, (req, res) => {
-  task.Get(({ result, error }) => {
-    if (error) res.status(500).send("Internal Server Error");
-    res.status(200).json(result);
+async function main() {
+  app.get("/tasks", authenticate, (req, res) => {
+    task.Get(({ result, error }) => {
+      if (error) res.status(500).send("Internal Server Error");
+      res.status(200).json(result);
+    });
   });
-});
 
-app.post("/tasks/create", authenticate, async (req, res) => {
-  const taskInputs = {
-    title: req.body.title,
-    description: req.body.description,
-  };
+  app.post("/tasks/create", authenticate, async (req, res) => {
+    const taskInputs = {
+      title: req.body.title,
+      description: req.body.description,
+    };
 
-  task.Create(taskInputs, ({ result, error }) => {
-    if (error) res.status(500).send("Internal Server Error");
-    res.status(201).json(result);
+    task.Create(taskInputs, ({ result, error }) => {
+      if (error) res.status(500).send("Internal Server Error");
+      res.status(201).json(result);
+    });
   });
-});
 
-app.put("/tasks/update/:id", authenticate, async (req, res) => {
-  const taskUpdateInputs = {
-    id: parseInt(req.params.id),
-    title: req.body.title,
-    description: req.body.description,
-  };
+  app.put("/tasks/update/:id", authenticate, async (req, res) => {
+    const taskUpdateInputs = {
+      id: parseInt(req.params.id),
+      title: req.body.title,
+      description: req.body.description,
+    };
 
-  task.Update(taskUpdateInputs, ({ result, error }) => {
-    if (error) res.status(500).send("Internal Server Error");
-    res.status(200).json(result);
+    task.Update(taskUpdateInputs, ({ result, error }) => {
+      if (error) res.status(500).send("Internal Server Error");
+      res.status(200).json(result);
+    });
   });
-});
 
-app.delete("/tasks/delete/:id", authenticate, async (req, res) => {
-  const id = parseInt(req.params.id);
+  app.delete("/tasks/delete/:id", authenticate, async (req, res) => {
+    const id = parseInt(req.params.id);
 
-  task.Delete(id, ({ result, error }) => {
-    if (error) res.status(500).send("Internal Server Error");
-    res.status(200).send(result);
+    task.Delete(id, ({ result, error }) => {
+      if (error) res.status(500).send("Internal Server Error");
+      res.status(200).send(result);
+    });
   });
-});
 
-app.post("/user/create", (req, res) => {
-  const userInputs = {
-    username: req.body.username,
-    email: req.body.email,
-    password: req.body.password,
-  };
+  app.post("/user/create", (req, res) => {
+    const userInputs = {
+      username: req.body.username,
+      email: req.body.email,
+      password: req.body.password,
+    };
 
-  user.Create(userInputs, ({ user_id, error }) => {
-    if (error) res.status(500).send("Internal Server Error");
-    if (user_id) {
-      user.Find(user_id, ({ result, error }) => {
-        if (error) {
-          res.status(500).send("Internal Server Error");
-        }
-        res.status(201).json(result);
-      });
-    }
-  });
-});
-
-app.post("/user/login", (req, res) => {
-  const { body } = req;
-  const { username, password } = body;
-
-  user.Login(
-    { username, password },
-    ({ authorization, error, wrongPassword }) => {
-      const { user, accessToken, refreshToken } = authorization;
-
-      if (wrongPassword) res.status(403).send("Usuário ou senha inválido!");
+    user.Create(userInputs, ({ result, error }) => {
       if (error) res.status(500).send("Internal Server Error");
 
-      console.log("accessToken", accessToken);
+      if (result) res.status(201).send("Criado com sucesso");
+    });
+  });
 
-      req.headers["authorization"] = accessToken;
-      res
-        .cookie("refreshToken", refreshToken, {
-          httpOnly: true,
-          sameSite: "strict",
-        })
-        .send(user);
-    }
-  );
-});
+  app.post("/user/login", (req, res) => {
+    const { body } = req;
+    const { username, password } = body;
+
+    user.Login(
+      { username, password },
+      ({ authorization, error, wrongPassword }) => {
+        if (wrongPassword) res.status(403).send("Usuário ou senha inválido!");
+        if (error) res.status(500).send("Internal Server Error");
+
+        const { user, accessToken, refreshToken } = authorization;
+
+        console.log("accessToken", accessToken);
+
+        req.headers["authorization"] = accessToken;
+        res
+          .cookie("refreshToken", refreshToken, {
+            httpOnly: true,
+            sameSite: "strict",
+          })
+          .send(user);
+      }
+    );
+  });
+}
+
+main()
+  .then(async () => {
+    await prisma.$disconnect();
+  })
+  .catch(async (e) => {
+    console.error(e);
+    await prisma.$disconnect();
+    process.exit(1);
+  });
 
 app.listen(3000);
