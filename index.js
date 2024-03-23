@@ -32,16 +32,34 @@ async function main() {
 
   app.post("/tasks/create", authenticate, async (req, res) => {
     const { authorization: accessToken } = req.headers;
-    const decodedToken = jwt.verify(accessToken, privateKey);
+
+    const decodedUserId = jwt.verify(
+      accessToken,
+      privateKey,
+      (error, decoded) => {
+        if (error) {
+          res.status(400).send("Access Denied. No token provided.");
+          return;
+        }
+
+        return decoded.user.id;
+      }
+    );
+
     const taskInputs = {
       title: req.body.title,
       description: req.body.description,
     };
 
-    task.Create(taskInputs, decodedToken.user.id, ({ result, error }) => {
-      if (error) res.status(500).send("Internal Server Error");
-      res.status(201).json(result);
-    });
+    if (!taskInputs.title) {
+      return res.status(400).send("O título deve ser preenchido");
+    }
+
+    if (decodedUserId)
+      task.Create(taskInputs, decodedUserId, ({ result, error }) => {
+        if (error) res.status(500).send("Internal Server Error");
+        res.status(201).json(result);
+      });
   });
 
   app.put("/tasks/update/:id", authenticate, async (req, res) => {
@@ -100,7 +118,7 @@ async function main() {
 
         console.log("accessToken", accessToken);
 
-        req.headers["authorization"] = accessToken;
+        req.headers["Authorization"] = accessToken;
         res
           .cookie("refreshToken", refreshToken, {
             httpOnly: true,
