@@ -6,24 +6,32 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 class User {
-  async Find(id, callback) {
+  async #Find({ username, email }) {
     try {
-      const user = await prisma.user.findUnique({
+      const user = await prisma.user.findFirst({
         where: {
-          id,
+          OR: [{ username }, { email }],
         },
       });
-
-      callback({ result: user });
+      if (user) {
+        return true;
+      }
+      return false;
     } catch (err) {
-      console.error(err);
-      callback({ error: true });
+      console.log(err);
+      return false;
     }
   }
 
   async Create(body, callback) {
     body.password = bcrypt.hashSync(body.password, 10);
     const { username, email, password } = body;
+    const alreadyExistEmailOrUsername = await this.#Find({ username, email });
+
+    if (alreadyExistEmailOrUsername) {
+      callback({ message: "E-mail ou Username já existente" });
+      return;
+    }
 
     try {
       const user = await prisma.user.create({

@@ -72,10 +72,16 @@ async function main() {
       email: req.body.email,
       password: req.body.password,
     };
+    const regex = new RegExp(/\s/gm);
 
-    user.Create(userInputs, ({ result, error }) => {
+    if (regex.test(userInputs.username)) {
+      res.status(400).send("Username não deve conter espaços");
+      return;
+    }
+
+    user.Create(userInputs, ({ result, error, message }) => {
       if (error) res.status(500).send("Internal Server Error");
-
+      if (message) res.status(400).send(message);
       if (result) res.status(201).send("Criado com sucesso");
     });
   });
