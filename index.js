@@ -2,16 +2,11 @@ require("dotenv").config();
 const express = require("express");
 const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
-const User = require("./core/user.js");
-const Task = require("./core/task.js");
-const authenticate = require("./middleware/authenticate.js");
 const { PrismaClient } = require("@prisma/client");
-const jwt = require("jsonwebtoken");
-const { privateKey } = require("./globalVariables.js");
+const taskRoute = require("./routes/Tasks");
+const userRoute = require("./routes/Users");
 
 const prisma = new PrismaClient();
-const user = new User();
-const task = new Task();
 const app = express();
 
 app.use(bodyParser.json());
@@ -23,111 +18,8 @@ app.use(
 app.use(cookieParser());
 
 async function main() {
-  app.get("/tasks", authenticate, (req, res) => {
-    task.Get(({ result, error }) => {
-      if (error) res.status(500).send("Internal Server Error");
-      res.status(200).json(result);
-    });
-  });
-
-  app.post("/tasks/create", authenticate, async (req, res) => {
-    const { authorization: accessToken } = req.headers;
-
-    const decodedUserId = jwt.verify(
-      accessToken,
-      privateKey,
-      (error, decoded) => {
-        if (error) {
-          res.status(400).send("Access Denied. No token provided.");
-          return;
-        }
-
-        return decoded.user.id;
-      }
-    );
-
-    const taskInputs = {
-      title: req.body.title,
-      description: req.body.description,
-    };
-
-    if (!taskInputs.title) {
-      return res.status(400).send("O título deve ser preenchido");
-    }
-
-    if (decodedUserId)
-      task.Create(taskInputs, decodedUserId, ({ result, error }) => {
-        if (error) res.status(500).send("Internal Server Error");
-        res.status(201).json(result);
-      });
-  });
-
-  app.put("/tasks/update/:id", authenticate, async (req, res) => {
-    const taskUpdateInputs = {
-      id: parseInt(req.params.id),
-      title: req.body.title,
-      description: req.body.description,
-    };
-
-    task.Update(taskUpdateInputs, ({ result, error }) => {
-      if (error) res.status(500).send("Internal Server Error");
-      res.status(200).json(result);
-    });
-  });
-
-  app.delete("/tasks/delete/:id", authenticate, async (req, res) => {
-    const id = parseInt(req.params.id);
-
-    task.Delete(id, ({ result, error }) => {
-      if (error) res.status(500).send("Internal Server Error");
-      res.status(200).send(result);
-    });
-  });
-
-  app.post("/user/create", (req, res) => {
-    const userInputs = {
-      username: req.body.username,
-      email: req.body.email,
-      password: req.body.password,
-    };
-    const regex = new RegExp(/\s/gm);
-
-    if (regex.test(userInputs.username)) {
-      res.status(400).send("Username não deve conter espaços");
-      return;
-    }
-
-    user.Create(userInputs, ({ result, error, message }) => {
-      if (error) res.status(500).send("Internal Server Error");
-      if (message) res.status(400).send(message);
-      if (result) res.status(201).send("Criado com sucesso");
-    });
-  });
-
-  app.post("/user/login", (req, res) => {
-    const { body } = req;
-    const { username, password } = body;
-
-    user.Login(
-      { username, password },
-      ({ authorization, error, wrongPassword }) => {
-        if (wrongPassword) res.status(403).send("Usuário ou senha inválido!");
-        if (error) res.status(500).send("Internal Server Error");
-
-        const { user, accessToken, refreshToken } = authorization;
-
-        console.log("accessToken", accessToken);
-
-        req.headers["Authorization"] = accessToken;
-        res
-          .cookie("refreshToken", refreshToken, {
-            httpOnly: true,
-            sameSite: "strict",
-          })
-          .send(user);
-      }
-    );
-  });
+  app.use("/task", taskRoute);
+  app.use("/user", userRoute);
 }
 
 main()
