@@ -32,4 +32,6 @@ main()
     process.exit(1);
   });
 
-app.listen(process.env.PORT || 3000);
+const server = app.listen(process.env.PORT || 3000);
+
+module.exports = { app, server };
