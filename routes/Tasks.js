@@ -15,7 +15,9 @@ router.get("/", authenticate, (req, res) => {
 });
 
 router.post("/create", authenticate, async (req, res) => {
-  const { authorization: accessToken } = req.headers;
+  const accessToken = req.headers["authorization"];
+  console.log(accessToken);
+  console.log(req.headers["authorization"]);
 
   const decodedUserId = jwt.verify(
     accessToken,

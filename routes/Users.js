@@ -31,7 +31,8 @@ router.post("/login", (req, res) => {
   user.Login(
     { username, password },
     ({ authorization, error, wrongPassword }) => {
-      if (wrongPassword) res.status(403).send("Usuário ou senha inválido!");
+      if (wrongPassword)
+        return res.status(403).send("Usuário ou senha inválido!");
       if (error) res.status(500).send("Internal Server Error");
 
       const { user, accessToken, refreshToken } = authorization;
