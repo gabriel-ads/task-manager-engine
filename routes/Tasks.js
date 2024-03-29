@@ -15,22 +15,7 @@ router.get("/", authenticate, (req, res) => {
 });
 
 router.post("/create", authenticate, async (req, res) => {
-  const accessToken = req.headers["authorization"];
-  console.log(accessToken);
-  console.log(req.headers["authorization"]);
-
-  const decodedUserId = jwt.verify(
-    accessToken,
-    privateKey,
-    (error, decoded) => {
-      if (error) {
-        res.status(400).send("Access Denied. No token provided.");
-        return;
-      }
-
-      return decoded.user.id;
-    }
-  );
+  const userId = req.user.id;
 
   const taskInputs = {
     title: req.body.title,
@@ -41,8 +26,8 @@ router.post("/create", authenticate, async (req, res) => {
     return res.status(400).send("O título deve ser preenchido");
   }
 
-  if (decodedUserId)
-    task.Create(taskInputs, decodedUserId, ({ result, error }) => {
+  if (userId)
+    task.Create(taskInputs, userId, ({ result, error }) => {
       if (error) res.status(500).send("Internal Server Error");
       res.status(201).json(result);
     });
