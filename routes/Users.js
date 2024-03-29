@@ -39,7 +39,7 @@ router.post("/login", (req, res) => {
 
       console.log("accessToken", accessToken);
 
-      req.headers["Authorization"] = accessToken;
+      req.headers["authorization"] = accessToken;
       res
         .cookie("refreshToken", refreshToken, {
           httpOnly: true,

@@ -10,8 +10,8 @@ const authenticate = async (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(accessToken, privateKey);
-    req.user = decoded.user;
+    const accessTokenDecoded = jwt.verify(accessToken, privateKey);
+    req.user = accessTokenDecoded.user;
     next();
   } catch (error) {
     if (!refreshToken) {
@@ -19,17 +19,22 @@ const authenticate = async (req, res, next) => {
     }
 
     try {
-      const decoded = jwt.verify(refreshToken, privateKey);
-      const accessToken = jwt.sign({ user: decoded.user }, privateKey, {
-        expiresIn: "1h",
-      });
+      const refreshTokenDecoded = jwt.verify(refreshToken, privateKey);
+      req.user = refreshTokenDecoded.user;
+      const accessToken = jwt.sign(
+        { user: refreshTokenDecoded.user },
+        privateKey,
+        {
+          expiresIn: "1h",
+        }
+      );
 
       res
         .cookie("refreshToken", refreshToken, {
           httpOnly: true,
           sameSite: "strict",
         })
-        .header("Authorization", accessToken);
+        .header("authorization", accessToken);
 
       next();
     } catch (error) {
